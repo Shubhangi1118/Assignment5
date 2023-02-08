@@ -1,7 +1,9 @@
 ﻿using Assignment5.Models;
 using Assignment5.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.JsonPatch;
 using MongoDB.Bson;
+using MongoDB.Driver;
 
 namespace Assignment5.Controllers;
 
@@ -10,6 +12,7 @@ namespace Assignment5.Controllers;
 public class UserController : ControllerBase
 {
     private readonly UserService _usersService;
+    private readonly IMongoCollection<User> Users;
 
     public UserController(UserService usersService) =>
         _usersService =usersService;
@@ -54,6 +57,20 @@ public class UserController : ControllerBase
         await _usersService.UpdateAsync(id, updatedUser);
 
         return NoContent();
+    }
+    [HttpPatch("{id:length(24)}")]
+    public async Task<IActionResult> UpdatePatch(string id, [FromBody] JsonPatchDocument<User> PartialUpdatedEmployee)
+    {
+
+        var entity = await Users.Find(x => x._id == id).FirstOrDefaultAsync();
+        if (entity == null)
+        {
+            return NotFound();
+        }
+        PartialUpdatedEmployee.ApplyTo(entity, ModelState);
+
+        return Ok();
+
     }
 
     [HttpDelete("{id:length(24)}")]
