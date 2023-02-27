@@ -2,6 +2,7 @@
 using Assignment5.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -14,8 +15,19 @@ public class UserController : ControllerBase
     private readonly UserService _usersService;
     private readonly IMongoCollection<User> Users;
 
-    public UserController(UserService usersService) =>
-        _usersService =usersService;
+    public UserController(UserService userService, IOptions<UserSettings> userSettings)
+    {
+        _usersService = userService;
+        var mongoClient = new MongoClient(
+                userSettings.Value.ConnectionString);
+
+        var mongoDatabase = mongoClient.GetDatabase(
+           userSettings.Value.DatabaseName);
+
+        Users= mongoDatabase.GetCollection<User>(
+            userSettings.Value.UsersCollectionName);
+
+    }
 
     [HttpGet]
     public async Task<List<User>> Get() =>
@@ -59,7 +71,7 @@ public class UserController : ControllerBase
         return NoContent();
     }
     [HttpPatch("{id:length(24)}")]
-    public async Task<IActionResult> UpdatePatch(string id, [FromBody] JsonPatchDocument<User> PartialUpdatedEmployee)
+    public async Task<IActionResult> UpdatePatch(string id, [FromBody] JsonPatchDocument<User> PartialUpdatedUser)
     {
 
         var entity = await Users.Find(x => x._id == id).FirstOrDefaultAsync();
@@ -67,7 +79,7 @@ public class UserController : ControllerBase
         {
             return NotFound();
         }
-        PartialUpdatedEmployee.ApplyTo(entity, ModelState);
+        PartialUpdatedUser.ApplyTo(entity, ModelState);
 
         return Ok();
 
